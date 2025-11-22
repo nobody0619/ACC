@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <title>PHR 练习 – Belanja / Hasil & PKK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- PapaParse 读取 CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.2rem;
+      line-height: 1.5;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: .3rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin-top: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,.03);
+    }
+    .row {
+      margin: .4rem 0;
+    }
+    label {
+      font-weight: 600;
+    }
+    input[type="number"] {
+      width: 140px;
+      padding: .25rem .4rem;
+    }
+    select {
+      padding: .25rem .4rem;
+    }
+    button {
+      padding: .45rem 1.1rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      margin-right: .5rem;
+    }
+    button#checkBtn { background:#2563eb; color:white; }
+    button#nextBtn { background:#e5e7eb; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .tag {
+      display:inline-block;
+      padding:.1rem .55rem;
+      border-radius:999px;
+      background:#f3f4f6;
+      font-size:.8rem;
+      margin-right:.3rem;
+    }
+    #feedback.correct { color:#16a34a; }
+    #feedback.wrong { color:#dc2626; }
+    #workings {
+      font-size:.9rem;
+      background:#f9fafb;
+      border-radius:8px;
+      padding:.6rem .8rem;
+      margin-top:.4rem;
+      display:none;
+    }
+    #progress {
+      font-size:.9rem;
+      margin-top:.4rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>PHR 练习 – Belanja / Hasil & PKK</h1>
+<p style="font-size:.9rem;">
+  步骤：看题目 → 判断 PHR 是 <b>Belanja</b> 还是 <b>Hasil</b>，再写出金额和期末 PHR。
+  <br/>答错的题目会被丢回题库，之后再出现 <b>2</b> 次。
+</p>
+
+<div id="status" class="row">
+  <span class="tag" id="qCounter">题目：0 / 0</span>
+  <span class="tag" id="scoreInfo">正确：0　错误：0</span>
+</div>
+
+<div id="questionCard" class="card" style="display:none;">
+  <div class="row" id="qText"></div>
+
+  <hr />
+
+  <div class="row">
+    <label>1. 在 UR 里：</label><br/>
+    <select id="urLabel">
+      <option value="">-- 选择 Belanja / Hasil --</option>
+      <option value="Belanja Hutang Ragu">Belanja Hutang Ragu</option>
+      <option value="Hasil Hutang Ragu">Hasil Hutang Ragu</option>
+    </select>
+    <span style="margin-left:.4rem;">金额：</span>
+    <input type="number" id="urAmount" placeholder="例如 200" />
+  </div>
+
+  <div class="row" style="margin-top:.6rem;">
+    <label>2. 在 PKK 里：</label><br/>
+    Peruntukan Hutang Ragu (akhir) =
+    <input type="number" id="phrFinal" placeholder="期末 PHR 金额" />
+  </div>
+
+  <div class="row" style="margin-top:.8rem;">
+    <button id="checkBtn">检查答案</button>
+    <button id="nextBtn" disabled>下一题</button>
+  </div>
+
+  <div id="feedback" class="row"></div>
+  <div id="workings"></div>
+</div>
+
+<div id="loading" class="row">正在载入题目……</div>
+
+<script>
+  // 题目数组
+  let questions = [];
+  let queue = [];
+  let current = null;
+  let totalCorrect = 0;
+  let totalWrong = 0;
+  let answeredCount = 0;
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function normalizeNumber(val) {
+    if (val === null || val === undefined) return NaN;
+    return parseFloat(String(val).replace(/[, ]/g, ""));
+  }
+
+  function loadCSV() {
+    Papa.parse("phr_questions.csv", {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(res) {
+        questions = res.data.map((row, idx) => {
+          return {
+            id: row.id || (idx+1),
+            description: row.description,
+            abt_open: normalizeNumber(row.abt_open),
+            phr_open: normalizeNumber(row.phr_open),
+            rate_percent: normalizeNumber(row.rate_percent),
+            ur_label: row.ur_label.trim(),
+            ur_amount: normalizeNumber(row.ur_amount),
+            phr_final: normalizeNumber(row.phr_final),
+            explain: row.explain || "",
+            repeatLeft: 0,
+            everWrong: false,
+            finished: false
+          };
+        });
+        queue = shuffle([...questions]);
+        document.getElementById("loading").style.display = "none";
+        if (queue.length > 0) {
+          document.getElementById("questionCard").style.display = "block";
+          updateStatus();
+          showNextQuestion();
+        } else {
+          document.getElementById("loading").innerText = "没有题目。";
+        }
+      },
+      error: function(err) {
+        document.getElementById("loading").innerText = "读取 CSV 出错：" + err;
+      }
+    });
+  }
+
+  function updateStatus() {
+    const total = questions.length;
+    document.getElementById("qCounter").innerText =
+      "题目：" + answeredCount + " / " + total;
+    document.getElementById("scoreInfo").innerText =
+      "正确：" + totalCorrect + "　错误：" + totalWrong;
+  }
+
+  function showNextQuestion() {
+    if (queue.length === 0) {
+      // 所有题目完成 & 没有剩下的 repeat
+      document.getElementById("qText").innerHTML =
+        "<b>恭喜！</b> 目前题库已经做完，你可以按 F5 重新练习。";
+      document.getElementById("checkBtn").disabled = true;
+      document.getElementById("nextBtn").disabled = true;
+      return;
+    }
+    current = queue.shift();
+    document.getElementById("qText").innerHTML =
+      "<b>题目 " + current.id + "：</b> " + current.description +
+      "<br><small>提示：先算 PHR baharu，再比较 PHR baharu 和 PHR awal。</small>";
+
+    // 清空输入
+    document.getElementById("urLabel").value = "";
+    document.getElementById("urAmount").value = "";
+    document.getElementById("phrFinal").value = "";
+    const fb = document.getElementById("feedback");
+    fb.textContent = "";
+    fb.className = "";
+    const w = document.getElementById("workings");
+    w.style.display = "none";
+    w.innerHTML = "";
+
+    document.getElementById("checkBtn").disabled = false;
+    document.getElementById("nextBtn").disabled = true;
+  }
+
+  document.getElementById("checkBtn").addEventListener("click", function() {
+    if (!current) return;
+    const sel = document.getElementById("urLabel").value.trim();
+    const urAmt = normalizeNumber(document.getElementById("urAmount").value);
+    const phrFinal = normalizeNumber(document.getElementById("phrFinal").value);
+
+    if (!sel || isNaN(urAmt) || isNaN(phrFinal)) {
+      alert("请先完成三样：选择 Belanja/Hasil、填写 UR 金额、填写期末 PHR 金额。");
+      return;
+    }
+
+    const correctLabel = current.ur_label;
+    const correctUr = current.ur_amount;
+    const correctPhrFinal = current.phr_final;
+
+    const labelOK = (sel === correctLabel);
+    const urOK = (urAmt === correctUr);
+    const phrOK = (phrFinal === correctPhrFinal);
+
+    const allOK = labelOK && urOK && phrOK;
+
+    const fb = document.getElementById("feedback");
+    const w = document.getElementById("workings");
+    w.style.display = "block";
+
+    if (allOK) {
+      fb.textContent = "✔ 答案正确！做得好～";
+      fb.className = "row correct";
+
+      if (!current.finished) {
+        // 第一次完成这题
+        answeredCount++;
+        if (current.everWrong) {
+          // 之前错过 → 这次 +0.5 也可以，但这里先只记次数
+        } else {
+          // 一次就对
+        }
+        current.finished = true;
+      }
+
+      totalCorrect++;
+      updateStatus();
+
+      // 若还有 repeat 次数，减一再丢回队列
+      if (current.repeatLeft > 0) {
+        current.repeatLeft--;
+        queue.push(current);
+      }
+
+      w.innerHTML =
+        "<b>讲解：</b> " +
+        (current.explain || "PHR baharu = " + current.rate_percent +
+         "% × ABT，然后比较 PHR baharu 和 PHR awal，PHR naik = Belanja, PHR turun = Hasil。");
+
+    } else {
+      fb.textContent = "✘ 还有部分不对，再试一次。此题将会再出现 2 次。";
+      fb.className = "row wrong";
+      totalWrong++;
+      current.everWrong = true;
+      current.repeatLeft += 2; // 错一次加 2 次重做
+      queue.push(current);
+
+      let detail = "<b>正确答案：</b><br>";
+      detail += "UR： " + correctLabel + " " + correctUr + "<br>";
+      detail += "PKK： Peruntukan Hutang Ragu (akhir) = " + correctPhrFinal + "<br><br>";
+      detail += "<b>思路：</b> " + (current.explain || "");
+      w.innerHTML = detail;
+
+      if (!current.finished) {
+        // 只统计一次“做过”这题
+        answeredCount++;
+        current.finished = true;
+      }
+
+      updateStatus();
+    }
+
+    document.getElementById("checkBtn").disabled = true;
+    document.getElementById("nextBtn").disabled = false;
+  });
+
+  document.getElementById("nextBtn").addEventListener("click", function() {
+    showNextQuestion();
+  });
+
+  loadCSV();
+</script>
+
+</body>
+</html>
