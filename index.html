@@ -2,222 +2,490 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <title>Latihan Maklumat Tambahan - Belanja & Hasil</title>
+  <title>Latihan Maklumat Tambahan – Debit / Kredit Drag & Drop</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- PapaParse 读取 CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f5fb;
+      color: #222;
+    }
+    header {
+      background: #2f3ec9;
+      color: #fff;
+      padding: 14px 18px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    header p {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    main {
       max-width: 900px;
-      margin: 0 auto;
-      padding: 16px;
-      line-height: 1.5;
+      margin: 16px auto 40px;
+      padding: 0 12px;
     }
-    h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+
     .card {
-      border: 1px solid #ccc;
-      border-radius: 10px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    .question-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      color: #555;
+    }
+
+    .question-text {
+      font-size: 1rem;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .topic-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: #eef;
+      color: #223;
+    }
+
+    .zones {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #b7b7d9;
+      border-radius: 12px;
       padding: 16px;
-      margin-top: 12px;
+      min-height: 60px;
+      text-align: center;
+      font-size: 0.95rem;
+      background: #fafafe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
     }
-    .label { font-weight: 600; margin-top: 8px; display: block; }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 6px 8px;
-      margin-top: 4px;
-      box-sizing: border-box;
+
+    .drop-zone.filled {
+      border-style: solid;
+      background: #f3f6ff;
     }
+
+    .drop-zone-label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+      color: #444;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      margin: 4px;
+      border-radius: 999px;
+      background: #e5e7ff;
+      cursor: grab;
+      font-size: 0.85rem;
+      user-select: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+    }
+
+    .chip:active {
+      transform: scale(0.96);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      cursor: grabbing;
+    }
+
+    .chip.used {
+      opacity: 0.55;
+      background: #dddff7;
+      cursor: default;
+    }
+
+    .chip.correct {
+      background: #c6f6d5;
+    }
+
+    .chip.wrong {
+      background: #fed7d7;
+    }
+
+    .choices-wrapper {
+      margin-top: 8px;
+    }
+
+    .choices-title {
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      font-weight: 600;
+      color: #444;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     button {
+      border: none;
+      border-radius: 999px;
       padding: 8px 14px;
-      margin-right: 8px;
-      margin-top: 10px;
+      font-size: 0.9rem;
       cursor: pointer;
+      background: #2f3ec9;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
-    #feedback { margin-top: 10px; font-weight: 600; }
-    .correct { color: #157347; }
-    .wrong { color: #b02a37; }
-    #status { margin-top: 8px; font-size: 0.9rem; color: #555; }
-    code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; }
+
+    button.secondary {
+      background: #e2e6ff;
+      color: #222;
+    }
+
+    button.outline {
+      background: transparent;
+      border: 1px solid #c3c7ff;
+      color: #222;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .status-line {
+      font-size: 0.9rem;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .status-line.ok {
+      color: #0f8a3b;
+    }
+
+    .status-line.err {
+      color: #c53030;
+    }
+
+    .score-bar {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      color: #444;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .zones {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Latihan Maklumat Tambahan</h1>
-  <p>
-    Fokus: <b>Belanja belum bayar, Belanja prabayar, Hasil belum terima, Hasil belum terperoleh</b><br>
-    Jawab ikut format SPM:
-  </p>
-  <ul>
-    <li>Isi <code>Belanja / Hasil</code> dalam <b>Akaun Perdagangan dan Untung Rugi</b></li>
-    <li>Isi <code>akaun semasa + amaun</code> dalam <b>Penyata Kedudukan Kewangan</b></li>
-    <li>Nama akaun mesti penuh，例如：<code>Gaji belum bayar</code>、<code>Insurans prabayar</code>、<code>Sewa diterima belum terima</code>、<code>Hasil belum terperoleh</code> 等。</li>
-  </ul>
+<header>
+  <h1>Latihan Maklumat Tambahan (Drag & Drop)</h1>
+  <p>Belanja/Hasil belum bayar & prabayar · Susut nilai · Hutang lapuk – latihan format Debit/Kredit</p>
+</header>
 
-  <div class="card" id="quizCard" style="display:none;">
-    <div id="questionText"></div>
+<main>
+  <div class="card">
+    <div class="score-bar">
+      Soalan: <span id="qNumber">0</span> /
+      <span id="qTotal">0</span> ·
+      Betul: <span id="qCorrect">0</span> ·
+      Salah (akan diulang): <span id="qWrong">0</span>
+    </div>
+    <div class="question-meta">
+      <div>Topik: <span id="qTopic" class="topic-tag">–</span></div>
+      <div id="qId"></div>
+    </div>
+    <div id="qText" class="question-text">Memuatkan soalan...</div>
 
-    <label class="label" for="urInput">
-      1. Amaun belanja / hasil dalam Akaun Untung Rugi (RM)
-    </label>
-    <input type="number" id="urInput" autocomplete="off" />
-
-    <label class="label" for="sofpNameInput">
-      2. Nama akaun dalam Penyata Kedudukan Kewangan
-      <small>(contoh: Gaji belum bayar / Insurans prabayar / Sewa diterima belum terima / Hasil belum terperoleh)</small>
-    </label>
-    <input type="text" id="sofpNameInput" autocomplete="off" />
-
-    <label class="label" for="sofpAmountInput">
-      3. Amaun dalam Penyata Kedudukan Kewangan (RM)
-    </label>
-    <input type="number" id="sofpAmountInput" autocomplete="off" />
-
-    <div>
-      <button id="checkBtn">Semak Jawapan</button>
-      <button id="showBtn" type="button">Tunjuk Jawapan</button>
-      <button id="nextBtn" type="button">Soalan Seterusnya</button>
+    <div class="zones">
+      <div>
+        <div class="drop-zone-label">Debit</div>
+        <div id="debitZone" class="drop-zone" data-zone="debit"></div>
+      </div>
+      <div>
+        <div class="drop-zone-label">Kredit</div>
+        <div id="creditZone" class="drop-zone" data-zone="credit"></div>
+      </div>
     </div>
 
-    <div id="feedback"></div>
-    <div id="status"></div>
+    <div class="choices-wrapper">
+      <div class="choices-title">Seret kad akaun yang betul ke kotak Debit dan Kredit:</div>
+      <div id="choiceContainer"></div>
+      <div class="hint">Tip: Jawap seperti di lejar larasan – Akaun yang didebit & dikredit.</div>
+    </div>
+
+    <div class="buttons">
+      <button id="checkBtn">Semak jawapan</button>
+      <button id="showBtn" class="secondary">Tunjuk jawapan</button>
+      <button id="nextBtn" class="outline">Soalan seterusnya ⏭</button>
+    </div>
+
+    <div id="status" class="status-line"></div>
   </div>
 
-  <p id="loading">Memuatkan soalan...</p>
-  <p id="finished" style="display:none;font-weight:600;">
-    Semua soalan telah dijawab. Anda boleh refresh untuk ulang latihan.
-  </p>
+  <div class="card">
+    <h3 style="margin-top:0">Cara penggunaan (untuk老师)</h3>
+    <ol style="font-size:0.9rem; padding-left:18px; margin-top:6px">
+      <li>`questions.csv` 可自由加题：<code>topic</code> 只是分类，不影响判分。</li>
+      <li>学生拖动账户名称到 Debit / Kredit，按「Semak jawapan」。</li>
+      <li>答错时，这题会被丢回题目队列<strong>两次</strong>，确保多练。</li>
+      <li>可放在 GitHub Pages，学生只需手机浏览器就能练习。</li>
+    </ol>
+  </div>
+</main>
 
-  <!-- PapaParse -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script>
-    const CSV_FILE = "maklumat-belanja-hasil.csv"; // 放在同一个 folder 就可以
-    let questions = [];
-    let index = 0;
-    let correctCount = 0;
-    let totalAnswered = 0;
+<script>
+  const topicNames = {
+    belanja_belum_bayar: "Belanja belum bayar (accrual)",
+    belanja_prabayar: "Belanja prabayar (prepaid)",
+    hasil_belum_terima: "Hasil belum terima (accrual)",
+    hasil_belum_terperoleh: "Hasil belum terperoleh (prepaid hasil)",
+    susut_nilai: "Susut nilai",
+    hutang_lapuk: "Hutang lapuk / terpulih"
+  };
 
-    function normaliseText(str) {
-      return str
-        .toLowerCase()
-        .replace(/\s+/g, " ")
-        .trim();
-    }
+  let questions = [];
+  let queue = [];        // 顺序队列（含重复）
+  let currentIndex = null;
+  let currentQuestion = null;
+  let correctCount = 0;
+  let wrongCount = 0;
 
-    function loadCSV() {
-      Papa.parse(CSV_FILE, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: (res) => {
-          questions = res.data.filter(row => row.id);
-          // 初始化重复计数
-          questions.forEach(q => q.repeatCount = 0);
-          shuffle(questions);
-          document.getElementById("loading").style.display = "none";
-          if (questions.length > 0) {
-            document.getElementById("quizCard").style.display = "block";
-            showQuestion();
-          }
-        }
-      });
-    }
+  const qNumberEl = document.getElementById("qNumber");
+  const qTotalEl = document.getElementById("qTotal");
+  const qCorrectEl = document.getElementById("qCorrect");
+  const qWrongEl = document.getElementById("qWrong");
+  const qTopicEl = document.getElementById("qTopic");
+  const qIdEl = document.getElementById("qId");
+  const qTextEl = document.getElementById("qText");
+  const debitZone = document.getElementById("debitZone");
+  const creditZone = document.getElementById("creditZone");
+  const choiceContainer = document.getElementById("choiceContainer");
+  const statusEl = document.getElementById("status");
+  const checkBtn = document.getElementById("checkBtn");
+  const showBtn = document.getElementById("showBtn");
+  const nextBtn = document.getElementById("nextBtn");
 
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-
-    function showQuestion() {
-      if (index >= questions.length) {
-        document.getElementById("quizCard").style.display = "none";
-        document.getElementById("finished").style.display = "block";
+  // 读取 CSV
+  Papa.parse("questions.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(res) {
+      questions = res.data.filter(row => row.id && row.question);
+      if (!questions.length) {
+        qTextEl.textContent = "Tiada soalan ditemui dalam questions.csv.";
         return;
       }
-      const q = questions[index];
-
-      const text =
-        "Kategori: <b>" + q.kategori + "</b><br>" +
-        "Item: <b>" + q.item + "</b><br>" +
-        q.maklumat_tambahan;
-
-      document.getElementById("questionText").innerHTML = text;
-      document.getElementById("urInput").value = "";
-      document.getElementById("sofpNameInput").value = "";
-      document.getElementById("sofpAmountInput").value = "";
-      document.getElementById("feedback").textContent = "";
-      updateStatus();
+      // 建立初始队列
+      queue = questions.map((_, idx) => idx);
+      qTotalEl.textContent = questions.length;
+      loadNextQuestion();
+    },
+    error: function() {
+      qTextEl.textContent = "Gagal memuatkan questions.csv. Sila semak nama fail / lokasi.";
     }
+  });
 
-    function updateStatus() {
-      const status = document.getElementById("status");
-      status.textContent =
-        "Soalan " + (index + 1) + " daripada " + questions.length +
-        " | Betul: " + correctCount + " / " + totalAnswered;
-    }
+  function clearZones() {
+    [debitZone, creditZone].forEach(zone => {
+      zone.innerHTML = "";
+      zone.classList.remove("filled");
+    });
+  }
 
-    function checkAnswer() {
-      const q = questions[index];
-      const urUser = Number(document.getElementById("urInput").value.trim());
-      const sofpNameUser = normaliseText(document.getElementById("sofpNameInput").value);
-      const sofpAmountUser = Number(document.getElementById("sofpAmountInput").value.trim());
+  function renderChoices(question) {
+    choiceContainer.innerHTML = "";
+    const choices = (question.choices || "").split(";").map(s => s.trim()).filter(Boolean);
 
-      const urCorrect = Number(q.amaun_untung_rugi);
-      const sofpNameCorrect = normaliseText(q.nama_aset_atau_liabiliti);
-      const sofpAmountCorrect = Number(q.amaun_penyata_kewangan);
+    choices.forEach((text, index) => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.textContent = text;
+      chip.draggable = true;
+      chip.dataset.choice = text;
+      chip.dataset.index = index;
 
-      let okUR = (urUser === urCorrect);
-      let okName = (sofpNameUser === sofpNameCorrect);
-      let okAmt = (sofpAmountUser === sofpAmountCorrect);
+      chip.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", text);
+        e.dataTransfer.effectAllowed = "move";
+      });
 
-      totalAnswered++;
+      choiceContainer.appendChild(chip);
+    });
+  }
 
-      const fb = document.getElementById("feedback");
-      if (okUR && okName && okAmt) {
-        correctCount++;
-        fb.textContent = "Betul! 👍";
-        fb.className = "correct";
-      } else {
-        let msg = "Masih ada yang salah: ";
-        const parts = [];
-        if (!okUR) parts.push("Untung Rugi");
-        if (!okName) parts.push("Nama akaun");
-        if (!okAmt) parts.push("Amaun PKK");
-        fb.textContent = msg + parts.join(", ");
-        fb.className = "wrong";
+  function setupDropZone(zoneEl) {
+    zoneEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      zoneEl.classList.add("filled");
+    });
 
-        // 打错题目：再出现2次（总共最多 3 次）
-        q.repeatCount = (q.repeatCount || 0) + 1;
-        if (q.repeatCount < 3) {
-          questions.push(q);
-        }
+    zoneEl.addEventListener("dragleave", () => {
+      if (!zoneEl.textContent.trim()) {
+        zoneEl.classList.remove("filled");
       }
-
-      index++;
-      updateStatus();
-    }
-
-    function showAnswer() {
-      const q = questions[index];
-      const fb = document.getElementById("feedback");
-      fb.className = "";
-      fb.innerHTML =
-        "Jawapan:<br>" +
-        "UR: <b>RM" + q.amaun_untung_rugi + "</b><br>" +
-        "PKK: <b>" + q.nama_aset_atau_liabiliti +
-        " RM" + q.amaun_penyata_kewangan + "</b>";
-    }
-
-    document.getElementById("checkBtn").addEventListener("click", () => {
-      checkAnswer();
-      setTimeout(showQuestion, 400);
-    });
-    document.getElementById("showBtn").addEventListener("click", showAnswer);
-    document.getElementById("nextBtn").addEventListener("click", () => {
-      index++;
-      showQuestion();
     });
 
-    loadCSV();
-  </script>
+    zoneEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const text = e.dataTransfer.getData("text/plain");
+      if (!text) return;
+
+      // 每个 zone 只放一个 chip：如果已有内容先释放原 chip
+      zoneEl.innerHTML = "";
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.textContent = text;
+      chip.dataset.choice = text;
+      zoneEl.appendChild(chip);
+      zoneEl.classList.add("filled");
+
+      // 标记原列表里的 chip 为 used（视觉反馈）
+      const listChips = choiceContainer.querySelectorAll(".chip");
+      listChips.forEach(c => {
+        if (c.dataset.choice === text) {
+          c.classList.add("used");
+        }
+      });
+    });
+  }
+
+  setupDropZone(debitZone);
+  setupDropZone(creditZone);
+
+  function loadNextQuestion() {
+    statusEl.textContent = "";
+    statusEl.className = "status-line";
+
+    clearZones();
+    // 取队列下一题
+    if (!queue.length) {
+      qTextEl.textContent = "Tahniah! Semua soalan telah dijawab. Tekan Soalan seterusnya untuk ulang satu pusingan baru.";
+      // 重建队列
+      queue = questions.map((_, idx) => idx);
+      return;
+    }
+
+    currentIndex = queue.shift();
+    currentQuestion = questions[currentIndex];
+
+    qNumberEl.textContent = (questions.length - queue.length); // 已经做了多少
+    qTopicEl.textContent = topicNames[currentQuestion.topic] || currentQuestion.topic || "Topik";
+    qIdEl.textContent = "ID: " + currentQuestion.id;
+    qTextEl.textContent = currentQuestion.question;
+
+    renderChoices(currentQuestion);
+  }
+
+  function getZoneAnswer(zoneEl) {
+    const chip = zoneEl.querySelector(".chip");
+    return chip ? chip.dataset.choice : "";
+  }
+
+  function checkAnswer() {
+    if (!currentQuestion) return;
+    const d = getZoneAnswer(debitZone);
+    const c = getZoneAnswer(creditZone);
+
+    if (!d || !c) {
+      statusEl.textContent = "Lengkapkan kedua-dua kotak Debit dan Kredit dahulu.";
+      statusEl.className = "status-line err";
+      return;
+    }
+
+    const correctD = (d === currentQuestion.debit_answer);
+    const correctC = (c === currentQuestion.credit_answer);
+
+    // 重设 chip 颜色
+    [debitZone, creditZone].forEach(zone => {
+      const chip = zone.querySelector(".chip");
+      if (!chip) return;
+      chip.classList.remove("correct", "wrong");
+    });
+
+    const dChip = debitZone.querySelector(".chip");
+    const cChip = creditZone.querySelector(".chip");
+
+    if (correctD && correctC) {
+      if (dChip) dChip.classList.add("correct");
+      if (cChip) cChip.classList.add("correct");
+      statusEl.textContent = "Betul! 👍";
+      statusEl.className = "status-line ok";
+      correctCount++;
+      qCorrectEl.textContent = correctCount;
+    } else {
+      if (dChip) dChip.classList.add(correctD ? "correct" : "wrong");
+      if (cChip) cChip.classList.add(correctC ? "correct" : "wrong");
+      statusEl.textContent = "Masih ada yang salah. Soalan ini akan diulang dua kali lagi.";
+      statusEl.className = "status-line err";
+      wrongCount++;
+      qWrongEl.textContent = wrongCount;
+      // 题目重新加入队列两次
+      queue.push(currentIndex, currentIndex);
+    }
+  }
+
+  function showAnswer() {
+    if (!currentQuestion) return;
+
+    clearZones();
+
+    function putInZone(zoneEl, text) {
+      const chip = document.createElement("div");
+      chip.className = "chip correct";
+      chip.textContent = text;
+      zoneEl.appendChild(chip);
+      zoneEl.classList.add("filled");
+    }
+
+    putInZone(debitZone, currentQuestion.debit_answer);
+    putInZone(creditZone, currentQuestion.credit_answer);
+
+    statusEl.textContent = "Inilah jawapan penuh untuk soalan ini.";
+    statusEl.className = "status-line ok";
+  }
+
+  checkBtn.addEventListener("click", checkAnswer);
+  showBtn.addEventListener("click", showAnswer);
+  nextBtn.addEventListener("click", loadNextQuestion);
+</script>
 </body>
 </html>
