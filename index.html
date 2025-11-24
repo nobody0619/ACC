@@ -1,491 +1,483 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <title>Latihan Maklumat Tambahan – Debit / Kredit Drag & Drop</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- PapaParse 读取 CSV -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>纪老师 F4 ACC 精英训练网 (升级版)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f5fb;
-      color: #222;
-    }
-    header {
-      background: #2f3ec9;
-      color: #fff;
-      padding: 14px 18px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-    header p {
-      margin: 4px 0 0;
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
+    /* --- 样式保持原汁原味，增加了输入框的样式 --- */
+    body { font-family: 'Segoe UI', Arial, sans-serif; max-width:900px; margin:auto; background-color: #f4f4f9; color: #333; }
+    
+    /* 容器样式 */
+    #welcome, #chapters, #quiz, #finish { margin: 20px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    #chapters, #quiz, #finish { display: none; }
 
-    main {
-      max-width: 900px;
-      margin: 16px auto 40px;
-      padding: 0 12px;
-    }
+    h1, h2 { color: #2c3e50; }
+    button { cursor: pointer; transition: 0.2s; }
 
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px 18px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-      margin-bottom: 16px;
+    /* 悬浮返回按钮 */
+    .floating-back { position: sticky; top:10px; left:0; text-align:left; z-index:5; margin-bottom: 10px; }
+    .floating-back button {
+      padding: 8px 16px; border-radius: 20px; border: none; background: #34495e; color: #fff; 
+      font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
+    .floating-back button:hover { background: #2c3e50; transform: translateY(-2px); }
 
-    .question-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      color: #555;
+    /* 章节列表 */
+    .group { text-align:left; margin:15px 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .group-title { font-weight:bold; font-size:18px; margin:8px 0; color: #2980b9; }
+    .item {
+      display:flex; justify-content:space-between; align-items:center; 
+      padding:12px; border-radius:8px; background:#f8f9fa; margin-bottom:8px; cursor:pointer; border: 1px solid #eee;
     }
+    .item:hover { background:#e8f4fd; border-color: #3498db; }
+    .badge { font-size:12px; background:#3498db; color:#fff; padding:2px 8px; border-radius:4px; margin-right: 8px; }
 
-    .question-text {
-      font-size: 1rem;
-      line-height: 1.4;
-      margin-bottom: 10px;
-    }
+    /* 题目区域 */
+    .q-card { text-align: center; }
+    .q-text { font-size: 1.3em; font-weight: bold; margin: 20px 0; }
+    .q-img { max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
 
-    .topic-tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      background: #eef;
-      color: #223;
+    /* 选项按钮 (选择题) */
+    .options-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px; }
+    .opt-btn {
+      padding: 15px; border: 2px solid #e0e0e0; background: white; border-radius: 10px;
+      font-size: 16px; text-align: left;
     }
+    .opt-btn:hover { border-color: #3498db; background: #f0f8ff; }
+    .opt-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+    .opt-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
 
-    .zones {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0,1fr));
-      gap: 12px;
-      margin: 12px 0 16px;
+    /* --- 新增：填空题样式 --- */
+    .input-area { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .input-field {
+        padding: 12px; font-size: 18px; width: 80%; border: 2px solid #ccc; border-radius: 8px; text-align: center; outline: none;
     }
+    .input-field:focus { border-color: #3498db; }
+    .submit-input-btn {
+        padding: 10px 30px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold;
+    }
+    .submit-input-btn:hover { background-color: #2980b9; }
 
-    .drop-zone {
-      border: 2px dashed #b7b7d9;
-      border-radius: 12px;
-      padding: 16px;
-      min-height: 60px;
-      text-align: center;
-      font-size: 0.95rem;
-      background: #fafafe;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+    /* 反馈区域 */
+    #feedback { margin-top: 20px; font-weight: bold; font-size: 1.1em; min-height: 30px; }
+    .feedback-correct { color: #28a745; }
+    .feedback-wrong { color: #dc3545; }
 
-    .drop-zone.filled {
-      border-style: solid;
-      background: #f3f6ff;
-    }
-
-    .drop-zone-label {
-      font-weight: 600;
-      margin-bottom: 6px;
-      font-size: 0.9rem;
-      color: #444;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 10px;
-      margin: 4px;
-      border-radius: 999px;
-      background: #e5e7ff;
-      cursor: grab;
-      font-size: 0.85rem;
-      user-select: none;
-      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
-    }
-
-    .chip:active {
-      transform: scale(0.96);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      cursor: grabbing;
-    }
-
-    .chip.used {
-      opacity: 0.55;
-      background: #dddff7;
-      cursor: default;
-    }
-
-    .chip.correct {
-      background: #c6f6d5;
-    }
-
-    .chip.wrong {
-      background: #fed7d7;
-    }
-
-    .choices-wrapper {
-      margin-top: 8px;
-    }
-
-    .choices-title {
-      font-size: 0.9rem;
-      margin-bottom: 4px;
-      font-weight: 600;
-      color: #444;
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 14px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      background: #2f3ec9;
-      color: #fff;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    button.secondary {
-      background: #e2e6ff;
-      color: #222;
-    }
-
-    button.outline {
-      background: transparent;
-      border: 1px solid #c3c7ff;
-      color: #222;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    .status-line {
-      font-size: 0.9rem;
-      margin-top: 8px;
-      min-height: 20px;
-    }
-
-    .status-line.ok {
-      color: #0f8a3b;
-    }
-
-    .status-line.err {
-      color: #c53030;
-    }
-
-    .score-bar {
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      color: #444;
-    }
-
-    .hint {
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 4px;
-    }
-
-    @media (max-width: 640px) {
-      .zones {
-        grid-template-columns: 1fr;
-      }
-    }
+    /* 结算页 */
+    .score-box { font-size: 2em; font-weight: bold; color: #2c3e50; margin: 20px 0; }
+    .form-group { margin: 15px 0; }
+    input[type="text"] { padding: 10px; width: 60%; border: 1px solid #ccc; border-radius: 4px; }
+    .primary-btn { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-size: 16px; }
   </style>
 </head>
 <body>
-<header>
-  <h1>Latihan Maklumat Tambahan (Drag & Drop)</h1>
-  <p>Belanja/Hasil belum bayar & prabayar · Susut nilai · Hutang lapuk – latihan format Debit/Kredit</p>
-</header>
 
-<main>
-  <div class="card">
-    <div class="score-bar">
-      Soalan: <span id="qNumber">0</span> /
-      <span id="qTotal">0</span> ·
-      Betul: <span id="qCorrect">0</span> ·
-      Salah (akan diulang): <span id="qWrong">0</span>
-    </div>
-    <div class="question-meta">
-      <div>Topik: <span id="qTopic" class="topic-tag">–</span></div>
-      <div id="qId"></div>
-    </div>
-    <div id="qText" class="question-text">Memuatkan soalan...</div>
-
-    <div class="zones">
-      <div>
-        <div class="drop-zone-label">Debit</div>
-        <div id="debitZone" class="drop-zone" data-zone="debit"></div>
-      </div>
-      <div>
-        <div class="drop-zone-label">Kredit</div>
-        <div id="creditZone" class="drop-zone" data-zone="credit"></div>
-      </div>
-    </div>
-
-    <div class="choices-wrapper">
-      <div class="choices-title">Seret kad akaun yang betul ke kotak Debit dan Kredit:</div>
-      <div id="choiceContainer"></div>
-      <div class="hint">Tip: Jawap seperti di lejar larasan – Akaun yang didebit & dikredit.</div>
-    </div>
-
-    <div class="buttons">
-      <button id="checkBtn">Semak jawapan</button>
-      <button id="showBtn" class="secondary">Tunjuk jawapan</button>
-      <button id="nextBtn" class="outline">Soalan seterusnya ⏭</button>
-    </div>
-
-    <div id="status" class="status-line"></div>
+  <div id="welcome">
+    <h1>🎓 纪老师 F4 ACC 精英训练网</h1>
+    <p>Loading data...</p>
   </div>
 
-  <div class="card">
-    <h3 style="margin-top:0">Cara penggunaan (untuk老师)</h3>
-    <ol style="font-size:0.9rem; padding-left:18px; margin-top:6px">
-      <li>`questions.csv` 可自由加题：<code>topic</code> 只是分类，不影响判分。</li>
-      <li>学生拖动账户名称到 Debit / Kredit，按「Semak jawapan」。</li>
-      <li>答错时，这题会被丢回题目队列<strong>两次</strong>，确保多练。</li>
-      <li>可放在 GitHub Pages，学生只需手机浏览器就能练习。</li>
-    </ol>
+  <div id="chapters">
+    <h2>📂 选择练习章节</h2>
+    <div id="chapter-list"></div>
   </div>
-</main>
+
+  <div id="quiz">
+    <div class="floating-back">
+      <button onclick="quitQuiz()">Quit / 返回目录</button>
+    </div>
+    
+    <div class="q-card">
+        <div style="display:flex; justify-content:space-between; color:#7f8c8d; font-size:0.9em;">
+            <span id="q-progress">1 / 10</span>
+            <span id="q-score">Score: 0</span>
+        </div>
+        
+        <div id="q-content">
+            </div>
+
+        <div id="feedback"></div>
+
+        <button id="next-btn" class="primary-btn" style="display:none; margin-top:20px;" onclick="nextQuestion()">下一题 ➡</button>
+    </div>
+  </div>
+
+  <div id="finish">
+    <h2>🎉 练习结束</h2>
+    <div class="score-box">得分: <span id="final-score">0</span>%</div>
+    <p>答对: <span id="final-correct">0</span> | 答错: <span id="final-wrong">0</span> | 用时: <span id="final-time">0</span>秒</p>
+    
+    <div class="form-group">
+        <input type="text" id="student-name" placeholder="请输入你的名字 (用于上传成绩)" />
+    </div>
+    <button class="primary-btn" onclick="uploadScore()">上传成绩</button>
+    <div id="submit-status" style="margin-top:10px; font-size:0.9em; color:#666;"></div>
+    
+    <div id="controls" style="margin-top:30px;"></div>
+    
+    <iframe name="hidden_iframe" style="display:none;"></iframe>
+    <form id="postForm" action="YOUR_GOOGLE_SCRIPT_URL" method="post" target="hidden_iframe" style="display:none;">
+        <input type="text" name="book" />
+        <input type="text" name="quizId" />
+        <input type="text" name="name" />
+        <input type="text" name="score" />
+        <input type="text" name="correct" />
+        <input type="text" name="wrong" />
+        <input type="text" name="time" />
+    </form>
+  </div>
 
 <script>
-  const topicNames = {
-    belanja_belum_bayar: "Belanja belum bayar (accrual)",
-    belanja_prabayar: "Belanja prabayar (prepaid)",
-    hasil_belum_terima: "Hasil belum terima (accrual)",
-    hasil_belum_terperoleh: "Hasil belum terperoleh (prepaid hasil)",
-    susut_nilai: "Susut nilai",
-    hutang_lapuk: "Hutang lapuk / terpulih"
-  };
+    // === 配置区域 ===
+    // 你的 Google Script URL (请替换成你自己的)
+    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; 
+    
+    // === 全局变量 ===
+    let chapterData = [];
+    let currentQuizQuestions = [];
+    let currentQIndex = 0;
+    let score = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let startTime = 0;
+    let currentChapterTitle = "";
 
-  let questions = [];
-  let queue = [];        // 顺序队列（含重复）
-  let currentIndex = null;
-  let currentQuestion = null;
-  let correctCount = 0;
-  let wrongCount = 0;
+    // === 初始化：加载章节列表 ===
+    window.onload = function() {
+        Papa.parse("Chapters.csv", {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                chapterData = results.data;
+                renderChapters();
+                document.getElementById('welcome').style.display = 'none';
+                document.getElementById('chapters').style.display = 'block';
+            },
+            error: function(err) {
+                alert("无法加载 Chapters.csv，请检查文件是否上传。");
+            }
+        });
+    };
 
-  const qNumberEl = document.getElementById("qNumber");
-  const qTotalEl = document.getElementById("qTotal");
-  const qCorrectEl = document.getElementById("qCorrect");
-  const qWrongEl = document.getElementById("qWrong");
-  const qTopicEl = document.getElementById("qTopic");
-  const qIdEl = document.getElementById("qId");
-  const qTextEl = document.getElementById("qText");
-  const debitZone = document.getElementById("debitZone");
-  const creditZone = document.getElementById("creditZone");
-  const choiceContainer = document.getElementById("choiceContainer");
-  const statusEl = document.getElementById("status");
-  const checkBtn = document.getElementById("checkBtn");
-  const showBtn = document.getElementById("showBtn");
-  const nextBtn = document.getElementById("nextBtn");
+    // 渲染章节列表
+    function renderChapters() {
+        const list = document.getElementById('chapter-list');
+        list.innerHTML = "";
+        
+        // 分组逻辑 (根据 csv 中的 chapter 列)
+        let lastGroup = "";
+        
+        chapterData.forEach((row, index) => {
+            if (!row.sheet) return; // 跳过无效行
 
-  // 读取 CSV
-  Papa.parse("questions.csv", {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: function(res) {
-      questions = res.data.filter(row => row.id && row.question);
-      if (!questions.length) {
-        qTextEl.textContent = "Tiada soalan ditemui dalam questions.csv.";
-        return;
-      }
-      // 建立初始队列
-      queue = questions.map((_, idx) => idx);
-      qTotalEl.textContent = questions.length;
-      loadNextQuestion();
-    },
-    error: function() {
-      qTextEl.textContent = "Gagal memuatkan questions.csv. Sila semak nama fail / lokasi.";
+            // 如果是新组，加标题
+            if (row.chapter !== lastGroup) {
+                const groupTitle = document.createElement('div');
+                groupTitle.className = 'group-title';
+                groupTitle.innerText = row.chapter;
+                list.appendChild(groupTitle);
+                lastGroup = row.chapter;
+            }
+
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `<span>${row.label}</span> <span style="color:#aaa;">></span>`;
+            item.onclick = () => loadQuiz(row.sheet, row.label);
+            list.appendChild(item);
+        });
     }
-  });
 
-  function clearZones() {
-    [debitZone, creditZone].forEach(zone => {
-      zone.innerHTML = "";
-      zone.classList.remove("filled");
-    });
-  }
+    // 加载具体 CSV 题目
+    function loadQuiz(csvFile, title) {
+        currentChapterTitle = title;
+        Papa.parse(csvFile, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                // 过滤掉空行或无问题行
+                currentQuizQuestions = results.data.filter(q => q.question);
+                if (currentQuizQuestions.length === 0) {
+                    alert("该章节没有题目！");
+                    return;
+                }
+                startQuiz();
+            },
+            error: function() {
+                alert("找不到文件: " + csvFile);
+            }
+        });
+    }
 
-  function renderChoices(question) {
-    choiceContainer.innerHTML = "";
-    const choices = (question.choices || "").split(";").map(s => s.trim()).filter(Boolean);
+    // === 核心：开始测验 ===
+    function startQuiz() {
+        currentQIndex = 0;
+        score = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        startTime = Date.now();
 
-    choices.forEach((text, index) => {
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.textContent = text;
-      chip.draggable = true;
-      chip.dataset.choice = text;
-      chip.dataset.index = index;
+        document.getElementById('chapters').style.display = 'none';
+        document.getElementById('finish').style.display = 'none';
+        document.getElementById('quiz').style.display = 'block';
 
-      chip.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", text);
-        e.dataTransfer.effectAllowed = "move";
-      });
+        renderQuestion();
+    }
 
-      choiceContainer.appendChild(chip);
-    });
-  }
+    // 渲染单题 (支持 radio 和 input)
+    function renderQuestion() {
+        const q = currentQuizQuestions[currentQIndex];
+        const contentDiv = document.getElementById('q-content');
+        const feedbackDiv = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
 
-  function setupDropZone(zoneEl) {
-    zoneEl.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      zoneEl.classList.add("filled");
-    });
+        // 更新进度条
+        document.getElementById('q-progress').innerText = `${currentQIndex + 1} / ${currentQuizQuestions.length}`;
+        document.getElementById('q-score').innerText = `Score: ${score}`; // 显示当前分数（可选）
+        
+        // 重置界面
+        contentDiv.innerHTML = "";
+        feedbackDiv.innerHTML = "";
+        feedbackDiv.className = "";
+        nextBtn.style.display = "none";
 
-    zoneEl.addEventListener("dragleave", () => {
-      if (!zoneEl.textContent.trim()) {
-        zoneEl.classList.remove("filled");
-      }
-    });
+        // 1. 显示题目文本
+        const qText = document.createElement('div');
+        qText.className = 'q-text';
+        qText.innerHTML = q.question; // 允许 HTML，比如换行
+        contentDiv.appendChild(qText);
 
-    zoneEl.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const text = e.dataTransfer.getData("text/plain");
-      if (!text) return;
-
-      // 每个 zone 只放一个 chip：如果已有内容先释放原 chip
-      zoneEl.innerHTML = "";
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.textContent = text;
-      chip.dataset.choice = text;
-      zoneEl.appendChild(chip);
-      zoneEl.classList.add("filled");
-
-      // 标记原列表里的 chip 为 used（视觉反馈）
-      const listChips = choiceContainer.querySelectorAll(".chip");
-      listChips.forEach(c => {
-        if (c.dataset.choice === text) {
-          c.classList.add("used");
+        // 2. 显示图片 (如果有)
+        if (q.image && q.image.trim() !== "") {
+            const img = document.createElement('img');
+            img.src = q.image; 
+            img.className = 'q-img';
+            contentDiv.appendChild(img);
         }
-      });
-    });
-  }
 
-  setupDropZone(debitZone);
-  setupDropZone(creditZone);
-
-  function loadNextQuestion() {
-    statusEl.textContent = "";
-    statusEl.className = "status-line";
-
-    clearZones();
-    // 取队列下一题
-    if (!queue.length) {
-      qTextEl.textContent = "Tahniah! Semua soalan telah dijawab. Tekan Soalan seterusnya untuk ulang satu pusingan baru.";
-      // 重建队列
-      queue = questions.map((_, idx) => idx);
-      return;
+        // 3. 判断题型并渲染
+        // 如果 type 是 'input'，渲染输入框；否则默认渲染选择题
+        if (q.type && q.type.trim().toLowerCase() === 'input') {
+            renderInputInterface(q, contentDiv);
+        } else {
+            renderChoiceInterface(q, contentDiv);
+        }
     }
 
-    currentIndex = queue.shift();
-    currentQuestion = questions[currentIndex];
-
-    qNumberEl.textContent = (questions.length - queue.length); // 已经做了多少
-    qTopicEl.textContent = topicNames[currentQuestion.topic] || currentQuestion.topic || "Topik";
-    qIdEl.textContent = "ID: " + currentQuestion.id;
-    qTextEl.textContent = currentQuestion.question;
-
-    renderChoices(currentQuestion);
-  }
-
-  function getZoneAnswer(zoneEl) {
-    const chip = zoneEl.querySelector(".chip");
-    return chip ? chip.dataset.choice : "";
-  }
-
-  function checkAnswer() {
-    if (!currentQuestion) return;
-    const d = getZoneAnswer(debitZone);
-    const c = getZoneAnswer(creditZone);
-
-    if (!d || !c) {
-      statusEl.textContent = "Lengkapkan kedua-dua kotak Debit dan Kredit dahulu.";
-      statusEl.className = "status-line err";
-      return;
+    // --- 渲染选择题 (Radio) ---
+    function renderChoiceInterface(q, container) {
+        const grid = document.createElement('div');
+        grid.className = 'options-grid';
+        
+        ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
+            if (q[opt]) { // 如果有这个选项
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn';
+                btn.innerText = `${opt}. ${q[opt]}`;
+                btn.onclick = () => checkChoiceAnswer(opt, q.answer, btn, grid);
+                grid.appendChild(btn);
+            }
+        });
+        container.appendChild(grid);
     }
 
-    const correctD = (d === currentQuestion.debit_answer);
-    const correctC = (c === currentQuestion.credit_answer);
+    // --- 渲染填空题 (Input) ---
+    function renderInputInterface(q, container) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'input-area';
 
-    // 重设 chip 颜色
-    [debitZone, creditZone].forEach(zone => {
-      const chip = zone.querySelector(".chip");
-      if (!chip) return;
-      chip.classList.remove("correct", "wrong");
-    });
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-field';
+        input.placeholder = '输入答案...';
+        input.id = 'user-input';
+        
+        // 支持按 Enter 提交
+        input.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                checkInputAnswer(q.answer);
+            }
+        });
 
-    const dChip = debitZone.querySelector(".chip");
-    const cChip = creditZone.querySelector(".chip");
+        const btn = document.createElement('button');
+        btn.className = 'submit-input-btn';
+        btn.innerText = '提交答案';
+        btn.onclick = () => checkInputAnswer(q.answer);
 
-    if (correctD && correctC) {
-      if (dChip) dChip.classList.add("correct");
-      if (cChip) cChip.classList.add("correct");
-      statusEl.textContent = "Betul! 👍";
-      statusEl.className = "status-line ok";
-      correctCount++;
-      qCorrectEl.textContent = correctCount;
-    } else {
-      if (dChip) dChip.classList.add(correctD ? "correct" : "wrong");
-      if (cChip) cChip.classList.add(correctC ? "correct" : "wrong");
-      statusEl.textContent = "Masih ada yang salah. Soalan ini akan diulang dua kali lagi.";
-      statusEl.className = "status-line err";
-      wrongCount++;
-      qWrongEl.textContent = wrongCount;
-      // 题目重新加入队列两次
-      queue.push(currentIndex, currentIndex);
-    }
-  }
-
-  function showAnswer() {
-    if (!currentQuestion) return;
-
-    clearZones();
-
-    function putInZone(zoneEl, text) {
-      const chip = document.createElement("div");
-      chip.className = "chip correct";
-      chip.textContent = text;
-      zoneEl.appendChild(chip);
-      zoneEl.classList.add("filled");
+        wrapper.appendChild(input);
+        wrapper.appendChild(btn);
+        container.appendChild(wrapper);
+        
+        // 自动聚焦
+        setTimeout(() => input.focus(), 100);
     }
 
-    putInZone(debitZone, currentQuestion.debit_answer);
-    putInZone(creditZone, currentQuestion.credit_answer);
+    // === 判分逻辑：选择题 ===
+    function checkChoiceAnswer(selected, correct, btnElement, gridElement) {
+        // 禁用所有按钮
+        const allBtns = gridElement.querySelectorAll('button');
+        allBtns.forEach(b => b.disabled = true);
 
-    statusEl.textContent = "Inilah jawapan penuh untuk soalan ini.";
-    statusEl.className = "status-line ok";
-  }
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
 
-  checkBtn.addEventListener("click", checkAnswer);
-  showBtn.addEventListener("click", showAnswer);
-  nextBtn.addEventListener("click", loadNextQuestion);
+        if (selected.trim().toUpperCase() === correct.trim().toUpperCase()) {
+            // 答对
+            btnElement.classList.add('correct');
+            feedback.innerText = "✅ 答对了！";
+            feedback.className = "feedback-correct";
+            score += 10; // 假设每题 10 分
+            correctCount++;
+        } else {
+            // 答错
+            btnElement.classList.add('wrong');
+            // 找出正确答案并标绿
+            allBtns.forEach(b => {
+                if (b.innerText.startsWith(correct.trim().toUpperCase() + ".")) {
+                    b.classList.add('correct');
+                }
+            });
+            feedback.innerText = `❌ 答错了。正确答案是 ${correct}`;
+            feedback.className = "feedback-wrong";
+            wrongCount++;
+        }
+        nextBtn.style.display = "inline-block";
+    }
+
+    // === 判分逻辑：填空题 ===
+    function checkInputAnswer(correctAnswer) {
+        const input = document.getElementById('user-input');
+        const submitBtn = document.querySelector('.submit-input-btn');
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+
+        // 禁用输入
+        input.disabled = true;
+        submitBtn.disabled = true;
+
+        const userVal = input.value.trim();
+        
+        // 核心：模糊匹配逻辑 (去除 RM, 逗号, 空格, 大小写)
+        // 例子: 答案 "1200", 用户输入 "RM 1,200" -> 系统视为 "1200"
+        const cleanUser = normalizeString(userVal);
+        const cleanAns = normalizeString(correctAnswer);
+
+        if (cleanUser === cleanAns && cleanUser !== "") {
+            feedback.innerText = "✅ 答对了！";
+            feedback.className = "feedback-correct";
+            score += 10;
+            correctCount++;
+        } else {
+            feedback.innerText = `❌ 答错了。参考答案: ${correctAnswer}`;
+            feedback.className = "feedback-wrong";
+            wrongCount++;
+        }
+        nextBtn.style.display = "inline-block";
+    }
+
+    // 字符串清洗工具
+    function normalizeString(str) {
+        if (!str) return "";
+        return str.toString()
+            .toLowerCase() // 转小写
+            .replace(/rm/g, "") // 去掉 RM
+            .replace(/,/g, "") // 去掉逗号
+            .replace(/\s+/g, ""); // 去掉所有空格
+    }
+
+    // === 下一题 & 结束 ===
+    function nextQuestion() {
+        currentQIndex++;
+        if (currentQIndex < currentQuizQuestions.length) {
+            renderQuestion();
+        } else {
+            finishQuiz();
+        }
+    }
+
+    function quitQuiz() {
+        if(confirm("确定要退出练习吗？进度将丢失。")) {
+            document.getElementById('quiz').style.display = 'none';
+            document.getElementById('chapters').style.display = 'block';
+        }
+    }
+
+    function finishQuiz() {
+        document.getElementById('quiz').style.display = 'none';
+        document.getElementById('finish').style.display = 'block';
+
+        // 计算最终百分比
+        const total = currentQuizQuestions.length;
+        const finalPercent = Math.round((correctCount / total) * 100);
+        const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+
+        document.getElementById('final-score').innerText = finalPercent;
+        document.getElementById('final-correct').innerText = correctCount;
+        document.getElementById('final-wrong').innerText = wrongCount;
+        document.getElementById('final-time').innerText = timeSpent;
+        
+        // 渲染返回按钮
+        const ctrl = document.getElementById('controls');
+        ctrl.innerHTML = '';
+        const backBtn = document.createElement('button');
+        backBtn.className = 'primary-btn';
+        backBtn.innerText = '返回目录';
+        backBtn.onclick = () => {
+            document.getElementById('finish').style.display = 'none';
+            document.getElementById('chapters').style.display = 'block';
+        };
+        ctrl.appendChild(backBtn);
+    }
+
+    // === 上传成绩 (原有逻辑) ===
+    async function uploadScore() {
+        const name = document.getElementById('student-name').value.trim();
+        if(!name) return alert("请先输入名字！");
+
+        const statusDiv = document.getElementById('submit-status');
+        statusDiv.innerText = "⏳ 正在上传...";
+
+        const total = currentQuizQuestions.length;
+        const finalPercent = Math.round((correctCount / total) * 100);
+        const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+
+        const payload = {
+            book: "F4 ACC", // 或者从 CSV 读取
+            quizId: currentChapterTitle,
+            name: name,
+            score: finalPercent,
+            correct: correctCount,
+            wrong: wrongCount,
+            time: timeSpent
+        };
+
+        try {
+            // 尝试 fetch (更现代的方法)
+            const res = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: new URLSearchParams(payload)
+            });
+            // Google Script 跨域通常不返回 JSON，可能会报错但实际成功
+            // 如果不想处理 CORS 错误，可以直接用 hidden iframe 方法
+            statusDiv.innerText = "✅ 成绩已提交 (Fetch)";
+        } catch (e) {
+            // 如果 fetch 失败 (通常是 CORS 问题)，用 iframe 兜底
+            const form = document.getElementById('postForm');
+            form.book.value = payload.book;
+            form.quizId.value = payload.quizId;
+            form.name.value = payload.name;
+            form.score.value = payload.score;
+            form.correct.value = payload.correct;
+            form.wrong.value = payload.wrong;
+            form.time.value = payload.time;
+            form.submit();
+            statusDiv.innerText = "✅ 成绩已通过备用通道提交";
+        }
+    }
 </script>
+
 </body>
 </html>
