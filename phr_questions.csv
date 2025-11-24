@@ -1,6 +1,0 @@
-id,type,description,abt_open,phr_open,rate_percent,ur_label,ur_amount,phr_final,explain
-1,PHR,"ABT = 20 000, PHR awal = 600, PHR baharu 4% atas ABT.",20000,600,4,Belanja Hutang Ragu,200,800,"PHR baharu = 20 000 x 4% = 800. PHR naik 200 → Belanja Hutang Ragu 200, PHR akhir 800."
-2,PHR,"ABT = 18 700, PHR awal = 980, PHR baharu 4% atas ABT.",18700,980,4,Hasil Hutang Ragu,232,748,"PHR baharu = 18 700 x 4% = 748. PHR turun 232 → Hasil Hutang Ragu 232, PHR akhir 748."
-3,PHR,"ABT = 6 750, tiada PHR awal, diwujudkan PHR 2% atas ABT.",6750,0,2,Belanja Hutang Ragu,135,135,"PHR baharu = 6 750 x 2% = 135. Dari 0 ke 135 → Belanja Hutang Ragu 135, PHR akhir 135."
-4,PHR,"ABT = 5 000, PHR awal = 150, PHR baharu 2% atas ABT.",5000,150,2,Hasil Hutang Ragu,50,100,"PHR baharu = 5 000 x 2% = 100. PHR turun 50 → Hasil Hutang Ragu 50, PHR akhir 100."
-5,PHR,"ABT = 10 000, PHR awal = 300, PHR baharu 5% atas ABT.",10000,300,5,Belanja Hutang Ragu,200,500,"PHR baharu = 10 000 x 5% = 500. PHR naik 200 → Belanja Hutang Ragu 200, PHR akhir 500."
