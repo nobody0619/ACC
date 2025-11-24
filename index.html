@@ -3,113 +3,124 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>纪老师 F4 ACC 精英训练网 (修复版)</title>
+  <title>纪老师精英训练网 (拖动特供版)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; max-width:900px; margin:auto; background-color: #f4f4f9; color: #333; }
-    
-    #welcome, #chapters, #quiz, #finish { margin: 20px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    /* === 核心样式：仿 V6 拖动版 UI === */
+    :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --border: #cbd5e1; --accent: #3b82f6; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: auto; background-color: var(--bg); color: var(--text); padding: 20px; }
+
+    /* 容器 */
+    #welcome, #chapters, #quiz, #finish { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; }
     #chapters, #quiz, #finish { display: none; }
 
-    h1, h2 { color: #2c3e50; }
-    button { cursor: pointer; transition: 0.2s; }
+    h1, h2 { color: #1e3a8a; text-align: center; }
+    
+    /* 章节列表样式 */
+    .group-title { font-weight: 800; font-size: 1.2em; margin: 20px 0 10px; color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+    .item { display: flex; justify-content: space-between; padding: 15px; background: white; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+    .item:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 
-    /* 悬浮返回按钮 */
-    .floating-back { position: sticky; top:10px; left:0; text-align:left; z-index:5; margin-bottom: 10px; }
-    .floating-back button {
-      padding: 8px 16px; border-radius: 20px; border: none; background: #34495e; color: #fff; 
-      font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    /* === 题目区域 (核心改动) === */
+    .q-text { font-size: 1.4em; font-weight: bold; margin-bottom: 20px; line-height: 1.5; text-align: center; }
+    .q-img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px auto; display: block; }
+
+    /* 坑位区域 (Slot) */
+    .answer-area { 
+        display: flex; justify-content: center; align-items: center; gap: 10px; 
+        margin: 30px 0; padding: 20px; background: #f1f5f9; border-radius: 12px; 
     }
-    .floating-back button:hover { background: #2c3e50; transform: translateY(-2px); }
-
-    /* 章节列表 */
-    .group { text-align:left; margin:15px 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .group-title { font-weight:bold; font-size:18px; margin:8px 0; color: #2980b9; }
-    .item {
-      display:flex; justify-content:space-between; align-items:center; 
-      padding:12px; border-radius:8px; background:#f8f9fa; margin-bottom:8px; cursor:pointer; border: 1px solid #eee;
+    .slot-label { font-weight: bold; color: #64748b; }
+    
+    /* 那个“坑” */
+    .slot { 
+        border: 3px dashed #94a3b8; background: #fff; border-radius: 8px; 
+        padding: 10px 20px; min-width: 150px; text-align: center; 
+        cursor: pointer; color: #94a3b8; font-weight: bold; font-size: 1.1em;
+        transition: 0.2s; user-select: none;
     }
-    .item:hover { background:#e8f4fd; border-color: #3498db; }
+    /* 填入后的样子 */
+    .slot.filled { 
+        border-style: solid; border-color: var(--primary); 
+        background: #eff6ff; color: var(--primary); 
+    }
+    /* 激活状态 (准备填入) */
+    .slot.active { border-color: #f59e0b; background: #fffbeb; animation: pulse 1s infinite; }
 
-    /* 题目区域 */
-    .q-card { text-align: center; }
-    .q-text { font-size: 1.3em; font-weight: bold; margin: 20px 0; }
-    .q-img { max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+    /* 标签库 (Tags) */
+    .tag-pool { margin-top: 30px; border-top: 2px solid #e2e8f0; padding-top: 20px; text-align: center; }
+    .tag-label { font-size: 0.9em; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    
+    /* 标签丸子 */
+    .tag { 
+        background: white; border: 2px solid var(--border); padding: 10px 18px; border-radius: 25px; 
+        cursor: pointer; font-size: 1em; font-weight: 600; color: #475569; transition: 0.2s; user-select: none;
+    }
+    .tag:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-3px); }
+    .tag.selected { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
 
-    /* 选项列表 (用于填空题展示参考) */
-    .options-list { text-align: left; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; display: inline-block; width: 90%; }
-    .opt-item { margin: 8px 0; font-size: 1.1em; }
-    .opt-key { font-weight: bold; color: #2980b9; margin-right: 8px; }
-
-    /* 选择题按钮 */
-    .options-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px; }
-    .opt-btn { padding: 15px; border: 2px solid #e0e0e0; background: white; border-radius: 10px; font-size: 16px; text-align: left; }
-    .opt-btn:hover { border-color: #3498db; background: #f0f8ff; }
-    .opt-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; }
-    .opt-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
-
-    /* 填空题输入 */
-    .input-area { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-    .input-field { padding: 12px; font-size: 18px; width: 60%; border: 2px solid #ccc; border-radius: 8px; text-align: center; outline: none; }
-    .input-field:focus { border-color: #3498db; }
-    .submit-input-btn { padding: 10px 30px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
-
+    /* 按钮 */
+    .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+    .btn-submit { background: var(--primary); color: white; }
+    .btn-submit:hover { background: #1e40af; }
+    .btn-next { background: #334155; color: white; display: none; }
+    
     /* 反馈 */
-    #feedback { margin-top: 20px; font-weight: bold; font-size: 1.1em; min-height: 30px; white-space: pre-wrap; }
-    .feedback-correct { color: #28a745; }
-    .feedback-wrong { color: #dc3545; }
+    #feedback { margin-top: 20px; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; display: none; }
+    .correct { background: #dcfce7; color: #166534; }
+    .wrong { background: #fee2e2; color: #991b1b; }
 
-    /* 结算 */
-    .score-box { font-size: 2em; font-weight: bold; color: #2c3e50; margin: 20px 0; }
-    .primary-btn { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-size: 16px; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
   </style>
 </head>
 <body>
 
   <div id="welcome">
-    <h1>🎓 纪老师 F4 ACC 精英训练网 (修复版)</h1>
-    <p>正在读取数据，请稍候...</p>
+    <h1>📚 载入题库中...</h1>
   </div>
 
   <div id="chapters">
-    <h2>📂 选择练习章节</h2>
+    <h1>📂 课程目录</h1>
     <div id="chapter-list"></div>
   </div>
 
   <div id="quiz">
-    <div class="floating-back">
-      <button onclick="quitQuiz()">Quit / 返回目录</button>
-    </div>
+    <button onclick="quitQuiz()" style="background:none; border:none; color:#64748b; cursor:pointer; font-weight:bold;">← 返回目录</button>
     
-    <div class="q-card">
-        <div style="display:flex; justify-content:space-between; color:#7f8c8d; font-size:0.9em;">
-            <span id="q-progress">1 / 10</span>
-            <span id="q-score">Score: 0</span>
-        </div>
-        
-        <div id="q-content"></div>
-        <div id="feedback"></div>
-        <button id="next-btn" class="primary-btn" style="display:none; margin-top:20px;" onclick="nextQuestion()">下一题 ➡</button>
+    <div style="display:flex; justify-content:space-between; margin-top:10px; color:#94a3b8; font-size:0.9em;">
+        <span id="q-progress">Question 1 / 10</span>
+        <span id="q-score">Score: 0</span>
     </div>
+
+    <div id="q-area">
+        </div>
+
+    <div id="feedback"></div>
+    <button id="btn-action" class="btn btn-submit" onclick="checkAnswer()">提交答案</button>
   </div>
 
   <div id="finish">
-    <h2>🎉 练习结束</h2>
-    <div class="score-box">得分: <span id="final-score">0</span>%</div>
-    <p>答对: <span id="final-correct">0</span> | 答错: <span id="final-wrong">0</span></p>
+    <h1>🎉 练习完成!</h1>
+    <div style="text-align:center; font-size:3em; font-weight:800; color:#2c3e50; margin:20px 0;">
+        <span id="final-score">0</span><span style="font-size:0.5em">%</span>
+    </div>
+    <p style="text-align:center;">答对: <b id="final-correct" style="color:green">0</b> | 答错: <b id="final-wrong" style="color:red">0</b></p>
     
-    <input type="text" id="student-name" placeholder="输入名字 (用于上传)" style="padding:10px; width:60%; margin:15px 0; border:1px solid #ccc; border-radius:4px;">
-    <button class="primary-btn" onclick="uploadScore()">上传成绩</button>
-    <div id="submit-status" style="margin-top:10px; color:#666;"></div>
-    
-    <div style="margin-top:30px;">
-        <button class="primary-btn" onclick="document.getElementById('finish').style.display='none'; document.getElementById('chapters').style.display='block';">返回目录</button>
+    <div style="margin-top:30px; text-align:center;">
+        <input type="text" id="student-name" placeholder="输入名字上传成绩" style="padding:10px; width:60%; border:2px solid #e2e8f0; border-radius:8px;">
+        <button class="btn btn-submit" style="margin-top:10px;" onclick="uploadScore()">上传成绩</button>
+        <div id="submit-status" style="margin-top:10px; color:#64748b; font-size:0.9em;"></div>
+        <br><br>
+        <button onclick="document.getElementById('finish').style.display='none'; document.getElementById('chapters').style.display='block';" style="background:none; border:none; color:#2563eb; cursor:pointer; text-decoration:underline;">返回章节列表</button>
     </div>
   </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; // 请替换你的 URL
-    
+    // 配置：你的 Google Script URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; 
+
+    // 全局变量
     let chapterData = [];
     let currentQuizQuestions = [];
     let currentQIndex = 0;
@@ -117,20 +128,24 @@
     let correctCount = 0;
     let wrongCount = 0;
     let currentChapterTitle = "";
+    
+    // 拖动逻辑核心变量
+    let selectedTag = null; // 当前选中的标签内容
 
+    // 初始化
     window.onload = function() {
         Papa.parse("Chapters.csv", {
             download: true,
             header: true,
             skipEmptyLines: true,
-            transformHeader: h => h.trim(), // 修复：自动去除表头空格
+            transformHeader: h => h.trim(),
             complete: function(results) {
                 chapterData = results.data;
                 renderChapters();
                 document.getElementById('welcome').style.display = 'none';
                 document.getElementById('chapters').style.display = 'block';
             },
-            error: function() { alert("无法加载 Chapters.csv"); }
+            error: function() { alert("错误：无法读取 Chapters.csv，请检查文件。"); }
         });
     };
 
@@ -150,7 +165,7 @@
             }
             const item = document.createElement('div');
             item.className = 'item';
-            item.innerHTML = `<span>${row.label}</span> <span>></span>`;
+            item.innerHTML = `<span>${row.label}</span> <span>➡</span>`;
             item.onclick = () => loadQuiz(row.sheet, row.label);
             list.appendChild(item);
         });
@@ -162,10 +177,11 @@
             download: true,
             header: true,
             skipEmptyLines: true,
-            transformHeader: h => h.trim(), // 关键修复：去除表头空格防止读取失败
+            transformHeader: h => h.trim(),
             complete: function(results) {
+                // 过滤掉没有题目的行
                 currentQuizQuestions = results.data.filter(q => q.question && q.question.trim());
-                if (currentQuizQuestions.length === 0) return alert("该章节没有题目或格式错误！");
+                if (currentQuizQuestions.length === 0) return alert("该章节为空！");
                 startQuiz();
             },
             error: function() { alert("找不到文件: " + csvFile); }
@@ -173,184 +189,161 @@
     }
 
     function startQuiz() {
-        currentQIndex = 0;
-        score = 0;
-        correctCount = 0;
-        wrongCount = 0;
+        currentQIndex = 0; score = 0; correctCount = 0; wrongCount = 0;
         document.getElementById('chapters').style.display = 'none';
         document.getElementById('finish').style.display = 'none';
         document.getElementById('quiz').style.display = 'block';
         renderQuestion();
     }
 
+    // === 核心：渲染“拖动版”题目 ===
     function renderQuestion() {
         const q = currentQuizQuestions[currentQIndex];
-        const contentDiv = document.getElementById('q-content');
-        const feedbackDiv = document.getElementById('feedback');
-        const nextBtn = document.getElementById('next-btn');
+        const area = document.getElementById('q-area');
+        const feedback = document.getElementById('feedback');
+        const actionBtn = document.getElementById('btn-action');
 
+        // UI 重置
         document.getElementById('q-progress').innerText = `${currentQIndex + 1} / ${currentQuizQuestions.length}`;
         document.getElementById('q-score').innerText = `Score: ${score}`;
+        feedback.style.display = 'none';
+        actionBtn.innerText = "提交答案";
+        actionBtn.className = "btn btn-submit";
+        actionBtn.onclick = checkAnswer;
+        selectedTag = null; // 重置选中状态
+
+        area.innerHTML = "";
+
+        // 1. 题目文本
+        let html = `<div class="q-text">${q.question}</div>`;
         
-        contentDiv.innerHTML = "";
-        feedbackDiv.innerHTML = "";
-        feedbackDiv.className = "";
-        nextBtn.style.display = "none";
-
-        // 题目
-        const qText = document.createElement('div');
-        qText.className = 'q-text';
-        qText.innerHTML = q.question;
-        contentDiv.appendChild(qText);
-
-        // 图片
+        // 2. 图片 (如有)
         if (q.image && q.image.trim()) {
-            const img = document.createElement('img');
-            img.src = q.image; img.className = 'q-img';
-            contentDiv.appendChild(img);
+            html += `<img src="${q.image}" class="q-img">`;
         }
 
-        const type = (q.type || "").trim().toLowerCase();
+        // 3. 生成“坑位” (Slot)
+        // 无论 CSV 写 input 还是 radio，我们都用“坑位”模式
+        html += `
+            <div class="answer-area">
+                <span class="slot-label">答案:</span>
+                <div class="slot" id="answer-slot" onclick="fillSlot(this)">点击下方标签</div>
+            </div>
+        `;
 
-        // 智能修复：如果是 input 类型，但也检测到了 A/B/C 选项，先展示选项表
-        if (type === 'input') {
-            const options = ['A','B','C','D','E','F','G','H'];
-            let hasOptions = false;
-            let optionsHtml = `<div class="options-list">`;
-            
-            options.forEach(key => {
-                if (q[key] && q[key].trim()) {
-                    hasOptions = true;
-                    optionsHtml += `<div class="opt-item"><span class="opt-key">${key}</span> ${q[key]}</div>`;
-                }
-            });
-            optionsHtml += `</div>`;
-            
-            if (hasOptions) contentDiv.innerHTML += optionsHtml; // 插入选项显示
-            renderInputInterface(q, contentDiv);
-        } else {
-            renderChoiceInterface(q, contentDiv);
-        }
-    }
-
-    function renderChoiceInterface(q, container) {
-        const grid = document.createElement('div');
-        grid.className = 'options-grid';
-        ['A','B','C','D','E'].forEach(opt => {
-            if (q[opt]) {
-                const btn = document.createElement('button');
-                btn.className = 'opt-btn';
-                btn.innerText = `${opt}. ${q[opt]}`;
-                btn.onclick = () => checkChoiceAnswer(opt, q.answer, btn, grid);
-                grid.appendChild(btn);
+        // 4. 生成“标签” (Tags) - 从 CSV 的 A,B,C,D... 列读取
+        let tagsHtml = `<div class="tag-pool"><div class="tag-label">选项列表</div><div class="tags">`;
+        
+        // 收集所有非空选项
+        let options = [];
+        ['A','B','C','D','E','F','G'].forEach(key => {
+            if (q[key] && q[key].trim()) {
+                // 比如 key="A", q[key]="Diabetes" -> Tag 显示 "A. Diabetes"
+                // 或者是纯文本。为了匹配答案逻辑，我们需注意：
+                // 如果答案列填的是 "A"，那我们让 Tag 的 value = "A"。
+                // 如果答案列填的是 "Diabetes"，那 Tag value = "Diabetes"。
+                
+                // *通常 CSV 格式是：Answer = A。所以 Tag 应该是 A。*
+                // *为了显示好看，我们显示 "A. Diabetes"，但实际传递的值是 "A"。*
+                
+                options.push({ key: key, text: q[key] });
             }
         });
-        container.appendChild(grid);
-    }
 
-    function renderInputInterface(q, container) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'input-area';
-        
-        const input = document.createElement('input');
-        input.className = 'input-field';
-        input.placeholder = '在此输入答案...';
-        input.id = 'user-input';
-        
-        // 允许回车提交
-        input.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") checkInputAnswer(q.answer);
+        // 打乱选项 (可选，这里先不打乱，按顺序排)
+        // options.sort(() => Math.random() - 0.5); 
+
+        options.forEach(opt => {
+            // 点击标签时，选中它 (value = key, e.g., "A")
+            tagsHtml += `<div class="tag" onclick="selectTag(this, '${opt.key}')">${opt.key}. ${opt.text}</div>`;
         });
 
-        const btn = document.createElement('button');
-        btn.className = 'submit-input-btn';
-        btn.innerText = '提交';
-        btn.onclick = () => checkInputAnswer(q.answer);
-
-        wrapper.appendChild(input);
-        wrapper.appendChild(btn);
-        container.appendChild(wrapper);
-        setTimeout(() => input.focus(), 100);
+        tagsHtml += `</div></div>`;
+        area.innerHTML = html + tagsHtml;
     }
 
-    function checkChoiceAnswer(selected, correct, btn, grid) {
-        const allBtns = grid.querySelectorAll('button');
-        allBtns.forEach(b => b.disabled = true);
-        const feedback = document.getElementById('feedback');
+    // === 交互逻辑：点击标签 -> 填充坑位 ===
+    function selectTag(el, val) {
+        // 1. 清除其他标签的高亮
+        document.querySelectorAll('.tag').forEach(t => t.classList.remove('selected'));
+        // 2. 高亮当前标签
+        el.classList.add('selected');
+        // 3. 记录当前选中的值 (例如 "A")
+        selectedTag = val;
         
-        // 强力清洗答案
-        const cleanCorrect = normalizeString(correct);
-        const cleanSelected = normalizeString(selected);
+        // 4. 为了方便，点击标签直接让坑位“跳动”提示用户可以填了
+        const slot = document.getElementById('answer-slot');
+        slot.classList.add('active');
+        
+        // *你的需求：点击标签直接填进去，还是先选标签再点坑？*
+        // *最顺手的方式：点击标签 -> 自动填入坑位。*
+        fillSlot(slot, val); 
+    }
 
-        if (cleanSelected === cleanCorrect) {
-            btn.classList.add('correct');
+    function fillSlot(slot, valOverride) {
+        const val = valOverride || selectedTag;
+        if (!val) return; // 没选标签
+
+        // 填入坑位
+        slot.innerText = val; // 显示 "A"
+        slot.classList.add('filled');
+        slot.classList.remove('active');
+        slot.dataset.value = val; // 存起来用于判分
+    }
+
+    // === 判分逻辑 ===
+    function checkAnswer() {
+        const slot = document.getElementById('answer-slot');
+        const userVal = slot.dataset.value; // 获取填入的值 (e.g. "A")
+        
+        if (!userVal) return alert("请先选择一个标签填入答案！");
+
+        const q = currentQuizQuestions[currentQIndex];
+        const correctVal = normalizeString(q.answer); // CSV 里的 answer (e.g. "A")
+        const cleanUser = normalizeString(userVal);
+
+        const feedback = document.getElementById('feedback');
+        const btn = document.getElementById('btn-action');
+
+        feedback.style.display = 'block';
+
+        if (cleanUser === correctVal) {
+            feedback.className = "correct";
             feedback.innerHTML = "✅ 答对了！";
-            feedback.className = "feedback-correct";
             score += 10; correctCount++;
         } else {
-            btn.classList.add('wrong');
-            // 尝试标出正确选项
-            allBtns.forEach(b => {
-                if (normalizeString(b.innerText.charAt(0)) === cleanCorrect) {
-                    b.classList.add('correct');
-                }
-            });
-            feedback.innerHTML = `❌ 答错了。正确答案是 ${correct}`;
-            feedback.className = "feedback-wrong";
+            feedback.className = "wrong";
+            feedback.innerHTML = `❌ 答错了。<br>你的答案: ${userVal} <br>正确答案: ${q.answer}`;
             wrongCount++;
         }
-        document.getElementById('next-btn').style.display = "inline-block";
+
+        // 按钮变“下一题”
+        btn.innerText = "下一题 ➡";
+        btn.className = "btn btn-next";
+        btn.style.display = "block"; // 确保显示
+        btn.onclick = nextQuestion;
+        
+        // 禁用标签点击
+        document.querySelectorAll('.tag').forEach(t => t.style.pointerEvents = 'none');
     }
 
-    function checkInputAnswer(correctAnswer) {
-        const input = document.getElementById('user-input');
-        const submitBtn = document.querySelector('.submit-input-btn');
-        input.disabled = true; submitBtn.disabled = true;
-        
-        const feedback = document.getElementById('feedback');
-        
-        // 核心修复：强力对比
-        const cleanUser = normalizeString(input.value);
-        const cleanAns = normalizeString(correctAnswer);
-
-        // Debug: 如果还有问题，可以在 F12 控制台看到对比
-        console.log(`User: "${cleanUser}" vs Ans: "${cleanAns}"`);
-
-        if (cleanUser === cleanAns && cleanUser !== "") {
-            feedback.innerHTML = "✅ 答对了！";
-            feedback.className = "feedback-correct";
-            score += 10; correctCount++;
-        } else {
-            feedback.innerHTML = `❌ 答错了。<br>你的答案: ${input.value}<br>参考答案: ${correctAnswer}`;
-            feedback.className = "feedback-wrong";
-            wrongCount++;
-        }
-        document.getElementById('next-btn').style.display = "inline-block";
-    }
-
-    // 万能清洗字符串函数：去空格、去符号、去大小写
     function normalizeString(str) {
         if (!str) return "";
-        return String(str)
-            .toLowerCase()
-            .replace(/rm/g, "") // 去RM
-            .replace(/,/g, "")  // 去逗号
-            .replace(/\./g, "") // 去句号
-            .replace(/\s+/g, "") // 去所有空格
-            .trim();
+        return String(str).trim().toUpperCase();
     }
 
     function nextQuestion() {
         currentQIndex++;
-        if (currentQIndex < currentQuizQuestions.length) renderQuestion();
-        else finishQuiz();
+        if (currentQIndex < currentQuizQuestions.length) {
+            renderQuestion();
+        } else {
+            finishQuiz();
+        }
     }
 
     function quitQuiz() {
-        if(confirm("确定要退出吗？")) {
-            document.getElementById('quiz').style.display = 'none';
-            document.getElementById('chapters').style.display = 'block';
-        }
+        document.getElementById('quiz').style.display = 'none';
+        document.getElementById('chapters').style.display = 'block';
     }
 
     function finishQuiz() {
@@ -363,19 +356,18 @@
         document.getElementById('final-wrong').innerText = wrongCount;
     }
 
+    // 上传成绩 (保持不变)
     function uploadScore() {
         const name = document.getElementById('student-name').value.trim();
         if(!name) return alert("请输入名字");
         
         document.getElementById('submit-status').innerText = "⏳ 正在上传...";
         
-        // 此处模拟上传，请确保 SCRIPT_URL 正确
-        // 因跨域问题，这里通常只发送请求不等待返回，或者使用 iframe 方法
         const img = new Image();
         img.src = `${SCRIPT_URL}?book=F4ACC&name=${encodeURIComponent(name)}&score=${document.getElementById('final-score').innerText}&quizId=${encodeURIComponent(currentChapterTitle)}`;
         
         setTimeout(() => {
-            document.getElementById('submit-status').innerText = "✅ 成绩已提交 (如网络正常)";
+            document.getElementById('submit-status').innerText = "✅ 成绩已提交 (假设)";
         }, 1000);
     }
 </script>
